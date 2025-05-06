@@ -1,8 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-
 import {
   FaMoneyBill,
   FaGasPump,
@@ -30,9 +29,23 @@ const initialState = {
   worksiteTime: "",
 };
 
-export default function JobModal({ onClose, onSuccess }) {
+export default function JobModal({ onClose, onSuccess, jobToEdit }) {
+  const isEditing = Boolean(jobToEdit);
   const [form, setForm] = useState(initialState);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (isEditing && jobToEdit) {
+      setForm({
+        payment: jobToEdit.payment,
+        fuelCost: jobToEdit.fuelCost,
+        miscCost: jobToEdit.miscCost,
+        wageCost: jobToEdit.wageCost,
+        drivingTime: jobToEdit.drivingTime,
+        worksiteTime: jobToEdit.worksiteTime,
+      });
+    }
+  }, [jobToEdit]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -41,23 +54,33 @@ export default function JobModal({ onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     const hasEmptyField = Object.values(form).some((val) => val === "");
     if (hasEmptyField) return toast.error("All fields are required");
 
+    const payload = {
+      ...form,
+      payment: Number(form.payment),
+      fuelCost: Number(form.fuelCost),
+      miscCost: Number(form.miscCost),
+      wageCost: Number(form.wageCost),
+      drivingTime: Number(form.drivingTime),
+      worksiteTime: Number(form.worksiteTime),
+    };
+
     setLoading(true);
     try {
-      await axios.post("https://clickupbackend.onrender.com/api/jobs", {
-        ...form,
-        payment: Number(form.payment),
-        fuelCost: Number(form.fuelCost),
-        miscCost: Number(form.miscCost),
-        wageCost: Number(form.wageCost),
-        drivingTime: Number(form.drivingTime),
-        worksiteTime: Number(form.worksiteTime),
-      });
+      if (isEditing) {
+        await axios.put(
+          `https://clickupbackend.onrender.com/api/jobs/${jobToEdit._id}`,
+          payload
+        );
+        toast.success("Job updated successfully!");
+      } else {
+        await axios.post("https://clickupbackend.onrender.com/api/jobs", payload);
+        toast.success("Job added successfully!");
+      }
 
-      toast.success("Job added successfully!");
-      setForm(initialState);
       onSuccess();
       onClose();
     } catch (err) {
@@ -81,7 +104,7 @@ export default function JobModal({ onClose, onSuccess }) {
           ✖
         </button>
         <h2 className="text-xl font-semibold mb-4 text-gray-800">
-          Add New Job
+          {isEditing ? "Edit Job" : "Add New Job"}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -109,7 +132,7 @@ export default function JobModal({ onClose, onSuccess }) {
               loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
             }`}
           >
-            {loading ? "Submitting..." : "Submit"}
+            {loading ? "Submitting..." : isEditing ? "Update Job" : "Submit"}
           </button>
         </form>
       </motion.div>

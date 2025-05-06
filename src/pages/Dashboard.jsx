@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import SummaryCard from "../components/SummaryCard";
 import JobModal from "../components/JobModal";
+import { FaMoneyBillWave,FaPlusCircle, FaChartLine, FaStopwatch, FaSyncAlt, FaEdit } from "react-icons/fa";
 
-import { FaMoneyBillWave, FaChartLine, FaStopwatch } from "react-icons/fa";
 
 export default function Dashboard() {
   const [data, setData] = useState({ jobs: [], summary: null });
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [jobToEdit, setJobToEdit] = useState(null);
 
-  const toggleModal = () => setShowModal(!showModal);
+  const toggleModal = () => {
+    setShowModal(!showModal);
+    if (showModal) setJobToEdit(null);
+  };
 
   const fetchDashboard = async () => {
     try {
@@ -22,6 +25,16 @@ export default function Dashboard() {
       toast.error("Failed to fetch dashboard data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      await axios.delete("https://clickupbackend.onrender.com/api/jobs/reset");
+      toast.success("Jobs reset successfully!");
+      fetchDashboard();
+    } catch (err) {
+      toast.error("Reset failed");
     }
   };
 
@@ -55,13 +68,22 @@ export default function Dashboard() {
         {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-4xl font-bold text-gray-800">📊 Dashboard</h1>
-          <motion.button
-            onClick={toggleModal}
-            whileTap={{ scale: 0.95 }}
-            className="px-5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl shadow hover:opacity-90 transition"
-          >
-            + Add New Job
-          </motion.button>
+          <div className="flex gap-4">
+            <motion.button
+              onClick={handleReset}
+              whileTap={{ scale: 0.95 }}
+              className="px-4 py-2 bg-red-500 text-white rounded-xl shadow hover:opacity-90 transition flex items-center gap-2"
+            >
+              <FaSyncAlt /> Reset
+            </motion.button>
+            <motion.button
+              onClick={() => setShowModal(true)}
+              whileTap={{ scale: 0.95 }}
+              className="px-5 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl shadow hover:opacity-90 transition flex items-center gap-2"
+            >
+              <FaPlusCircle /> Add New Job
+            </motion.button>
+          </div>
         </div>
 
         {/* Summary Cards */}
@@ -87,7 +109,7 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* Recent Jobs List */}
+        {/* Recent Jobs */}
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-700 mb-4">🕓 Recent Jobs</h2>
           <ul className="space-y-3">
@@ -112,9 +134,20 @@ export default function Dashboard() {
                         Profit: ${profit.toFixed(2)}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-500">
-                      {new Date(job.createdAt).toLocaleDateString()}
-                    </span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs text-gray-500">
+                        {new Date(job.createdAt).toLocaleDateString()}
+                      </span>
+                      <button
+                        className="text-blue-600 hover:text-blue-800"
+                        onClick={() => {
+                          setJobToEdit(job);
+                          setShowModal(true);
+                        }}
+                      >
+                        <FaEdit />
+                      </button>
+                    </div>
                   </motion.li>
                 );
               })
@@ -125,9 +158,16 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Modal Render */}
+      {/* Modal for Create/Edit Job */}
       {showModal && (
-        <JobModal onClose={toggleModal} onSuccess={fetchDashboard} />
+        <JobModal
+          onClose={toggleModal}
+          onSuccess={() => {
+            fetchDashboard();
+            toggleModal();
+          }}
+          jobToEdit={jobToEdit}
+        />
       )}
     </div>
   );
